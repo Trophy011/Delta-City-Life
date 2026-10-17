@@ -1,0 +1,6 @@
+{
+  "name": "Delta Life 3D - Warri & Asaba Simulation",
+  "description": "Realistic 3D Nigerian open world life simulation set in Delta State. Explore Warri, furnish your house, work jobs, pick money and dance at Club Empire, and cruise in cars or private jets.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
