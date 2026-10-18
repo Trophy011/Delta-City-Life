@@ -14,6 +14,7 @@ import {
   Zap,
   FastForward,
   MessageCircle,
+  Shirt,
 } from 'lucide-react';
 import { PlayerProfile, DeltaLocation } from '../types';
 import { ViewMode } from '../game/GameCanvas';
@@ -33,6 +34,7 @@ interface GameHUDProps {
   onToggleMute: () => void;
   isMuted: boolean;
   onOpenChatAndFriends: () => void;
+  onOpenWardrobe?: () => void;
   onOpenAdminFix?: () => void;
   touchInputRef: React.MutableRefObject<{
     moveX: number;
@@ -57,6 +59,7 @@ export const GameHUD: React.FC<GameHUDProps> = ({
   onToggleMute,
   isMuted,
   onOpenChatAndFriends,
+  onOpenWardrobe,
   onOpenAdminFix,
   touchInputRef,
 }) => {
@@ -311,6 +314,20 @@ export const GameHUD: React.FC<GameHUDProps> = ({
 
           {/* Right side floating controls matching video 00:00-00:46 */}
           <div className="pointer-events-auto flex flex-col items-end gap-2.5">
+            {/* Drip / Wardrobe Editor button */}
+            {onOpenWardrobe && (
+              <button
+                onClick={() => {
+                  sound.playClick();
+                  onOpenWardrobe();
+                }}
+                className="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-400 text-slate-950 shadow-xl flex items-center justify-center font-black cursor-pointer hover:scale-105 transition-transform"
+                title="Avatar Wardrobe & Clothes"
+              >
+                <Shirt className="w-5 h-5 text-slate-950" />
+              </button>
+            )}
+
             {/* GPS center */}
             <button
               onClick={() => {
@@ -363,19 +380,26 @@ export const GameHUD: React.FC<GameHUDProps> = ({
 
       {/* 5. BOTTOM NAVIGATION BAR MATCHING VIDEO 00:01, 00:04, 00:10, 00:47 EXACTLY */}
       <div className="pointer-events-auto self-center w-full max-w-lg bg-white/95 text-slate-800 rounded-3xl p-2 px-3.5 shadow-2xl border border-slate-200 flex items-center justify-between backdrop-blur-md">
-        {/* Left: Avatar circle with energy percentage ring 56% matching video */}
-        <div className="flex items-center gap-2 pr-2 border-r border-slate-200">
+        {/* Left: Avatar circle - clicking opens wardrobe! */}
+        <button
+          onClick={() => {
+            sound.playClick();
+            onOpenWardrobe?.();
+          }}
+          className="flex items-center gap-2 pr-2 border-r border-slate-200 cursor-pointer hover:opacity-80 transition-opacity"
+          title="Edit Avatar & Wardrobe"
+        >
           <div
             className="w-10 h-10 rounded-full border-2 border-emerald-500 flex items-center justify-center text-white font-black text-xs shadow"
             style={{ backgroundColor: player.skinTone }}
           >
             {player.username.charAt(0)}
           </div>
-          <div className="flex items-center gap-1 text-[11px] font-bold text-slate-700">
-            <span>🔑</span>
-            <span className="tabular-nums">56%</span>
+          <div className="flex flex-col items-start text-left">
+            <span className="text-[10px] font-black text-slate-900 leading-none truncate max-w-[60px]">{player.username}</span>
+            <span className="text-[9px] text-emerald-600 font-bold mt-0.5">Edit Drip</span>
           </div>
-        </div>
+        </button>
 
         {/* Tab 1: Home (House icon) */}
         <button
@@ -415,7 +439,21 @@ export const GameHUD: React.FC<GameHUDProps> = ({
           <span className="text-[10px] font-bold">Map</span>
         </button>
 
-        {/* Tab 4: Social / Chat & Friends with other players! */}
+        {/* Tab 4: Drip / Wardrobe */}
+        {onOpenWardrobe && (
+          <button
+            onClick={() => {
+              sound.playClick();
+              onOpenWardrobe();
+            }}
+            className="flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-2xl text-slate-600 hover:text-slate-900 transition-all cursor-pointer"
+          >
+            <Shirt className="w-5 h-5 text-amber-500" />
+            <span className="text-[10px] font-bold">Drip</span>
+          </button>
+        )}
+
+        {/* Tab 5: Social / Chat & Friends with other players! */}
         <button
           onClick={() => {
             sound.playClick();
@@ -428,7 +466,7 @@ export const GameHUD: React.FC<GameHUDProps> = ({
           <span className="absolute top-0 right-1 w-2 h-2 rounded-full bg-sky-500 animate-ping" />
         </button>
 
-        {/* Tab 5: Go Outside / Inside Toggle Button */}
+        {/* Tab 6: Go Outside / Inside Toggle Button */}
         {isHouse ? (
           <button
             onClick={() => {
@@ -442,7 +480,7 @@ export const GameHUD: React.FC<GameHUDProps> = ({
           </button>
         ) : null}
 
-        {/* Tab 6: Phone (Smartphone icon matching video!) */}
+        {/* Tab 7: Phone (Smartphone icon matching video!) */}
         <button
           onClick={() => {
             sound.playClick();

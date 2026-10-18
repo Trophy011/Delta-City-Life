@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { createCharacterMesh, createVehicleMesh } from './proceduralModels';
 import { buildOpenWorldScene, buildDollhouseCutawayScene } from './worldBuilder';
+import { calculateRoadRoute, RoadWaypoint } from './roadRouter';
 import { sound } from '../utils/audio';
 import { PlayerProfile, DeltaLocation } from '../types';
 
@@ -136,13 +137,41 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       camera.lookAt(0, 1.5, 0);
     } else {
       worldData.exteriorGroup.visible = true;
-      camera.position.set(-100, 3.5, 82);
+      camera.position.set(-100, 2.1, 84 - 3.8);
+      camera.lookAt(-100, 1.35, 84);
     }
 
-    // 3. Player Character Mesh
-    const playerMesh = createCharacterMesh(player.skinTone, player.outfitColor);
-    playerMesh.position.set(-100, 0, 70); // Starts right outside villa gate on street
+    // 3. Player Character Mesh (Realistic GTA character with accessories & styling)
+    const playerMesh = createCharacterMesh(
+      player.skinTone,
+      player.outfitColor,
+      false,
+      player.outfitStyle || 'player',
+      {
+        hasGlasses: player.hasGlasses,
+        hasGoldChain: player.hasGoldChain,
+        hasWatch: player.hasWatch,
+        hairStyle: player.hairStyle,
+      }
+    );
+    // Starts right outside villa compound gate on the pedestrian sidewalk
+    playerMesh.position.set(-100, 0.14, 84);
     scene.add(playerMesh);
+
+    // Building Collision Checker (Solid obstacle avoidance - no passing through buildings!)
+    const checkBuildingCollision = (x: number, z: number, radius = 0.5): boolean => {
+      for (const b of worldData.buildingColliders) {
+        if (
+          x + radius > b.minX &&
+          x - radius < b.maxX &&
+          z + radius > b.minZ &&
+          z - radius < b.maxZ
+        ) {
+          return true;
+        }
+      }
+      return false;
+    };
 
     // Vehicle mesh for active vehicle or cab ride
     let vehicleMesh: THREE.Group | null = null;
@@ -262,6 +291,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     let currentNearPedestrian: string | null = null;
     let danceTimer = 0;
 
+    // Road GPS Navigation Route State for Cab Rides (never clips through buildings!)
+    let cabRoute: RoadWaypoint[] = [];
+    let cabWpIndex = 0;
+    let lastCabDestId: string | null = null;
+
     const clock = new THREE.Clock();
     let animFrameId: number;
 
@@ -296,26 +330,49 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         camera.lookAt(20, 0, 10);
 
       } else if (mode === 'cab_ride') {
-        // --- CAB RIDE HIGHWAY CRUISE (as seen in video 00:00-00:03) ---
+        // --- CAB RIDE HIGHWAY CRUISE VIA MAIN ROADS (No Building Clipping!) ---
         const dest = stateRef.current.cabDestination;
         if (dest && vehicleMesh) {
-          // Cruise along road towards destination
-          _vec3.set(dest.x, 0, dest.z);
-          _moveDir.subVectors(_vec3, playerPos).normalize();
-          playerHeading = Math.atan2(_moveDir.x, _moveDir.z);
+          // Calculate asphalt road route if not yet generated or destination changed
+          if (cabRoute.length === 0 || lastCabDestId !== dest.id) {
+            cabRoute = calculateRoadRoute(playerPos.x, playerPos.z, dest.x, dest.z);
+            cabWpIndex = 0;
+            lastCabDestId = dest.id;
+          }
 
-          const cabSpeed = 35;
-          playerPos.addScaledVector(_moveDir, cabSpeed * dt);
+          const targetWp = cabRoute[cabWpIndex] || { x: dest.x, z: dest.z };
+          _vec3.set(targetWp.x, 0, targetWp.z);
+          _moveDir.subVectors(_vec3, playerPos);
+          const distToWp = _moveDir.length();
+
+          // Move to next waypoint when close enough
+          if (distToWp < 2.8 && cabWpIndex < cabRoute.length - 1) {
+            cabWpIndex++;
+          }
+
+          _moveDir.normalize();
+          const targetHeading = Math.atan2(_moveDir.x, _moveDir.z);
+
+          // Smooth turning around road corners
+          let diff = targetHeading - playerHeading;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          playerHeading += diff * Math.min(1, 7.5 * dt);
+
+          // Controlled realistic cruising speed along the main road
+          const cabSpeed = 22; // ~80 km/h realistic Delta cruising speed
+          _forward.set(Math.sin(playerHeading), 0, Math.cos(playerHeading));
+          playerPos.addScaledVector(_forward, cabSpeed * dt);
           vehicleMesh.position.copy(playerPos);
           vehicleMesh.rotation.y = playerHeading;
 
           sound.updateEngineSound(0.65, false);
 
-          // Video camera perspective behind cab on highway
+          // Realistic third-person camera trailing smoothly behind the cab on the highway
           _camOffset.set(
-            playerPos.x - Math.sin(playerHeading) * 9,
-            playerPos.y + 4.2,
-            playerPos.z - Math.cos(playerHeading) * 9
+            playerPos.x - Math.sin(playerHeading) * 8.5,
+            playerPos.y + 3.8,
+            playerPos.z - Math.cos(playerHeading) * 8.5
           );
           camera.position.x = THREE.MathUtils.damp(camera.position.x, _camOffset.x, 6, dt);
           camera.position.y = THREE.MathUtils.damp(camera.position.y, _camOffset.y, 6, dt);
@@ -324,7 +381,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         }
 
       } else {
-        // --- THIRD PERSON STREET WALK & RUN (as seen in video 00:54-01:13) ---
+        // --- THIRD PERSON STREET WALK & DRIVING ---
         let moveForward = 0;
         let moveTurn = 0;
 
@@ -342,42 +399,75 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         const dancing = stateRef.current.isDancing;
 
         if (isInVehicle && vehicleMesh) {
-          // Vehicle Driving
-          const maxSpeed = isJet ? 95 : 45;
-          if (moveForward > 0.1) vehicleSpeed = Math.min(vehicleSpeed + 26 * dt, maxSpeed);
-          else if (moveForward < -0.1) vehicleSpeed = Math.max(vehicleSpeed - 20 * dt, -maxSpeed * 0.3);
-          else vehicleSpeed = THREE.MathUtils.damp(vehicleSpeed, 0, 4, dt);
+          // --- CONTROLLED REALISTIC VEHICLE DRIVING ---
+          // Speeds are calibrated to realistic limits: sedans/keke cruise at safe controlled speeds
+          const maxSpeed = isJet ? 65 : 22; // Controlled realistic speed (not flying uncontrollably!)
+          const accel = isJet ? 30 : 18;
+          const brakePower = 28;
 
-          if (Math.abs(vehicleSpeed) > 0.5) {
-            playerHeading += moveTurn * 2.2 * dt * (vehicleSpeed > 0 ? 1 : -1);
+          if (moveForward > 0.1) {
+            vehicleSpeed = Math.min(vehicleSpeed + accel * dt, maxSpeed);
+          } else if (moveForward < -0.1) {
+            // Firm responsive brakes and reverse
+            vehicleSpeed = Math.max(vehicleSpeed - brakePower * dt, -maxSpeed * 0.35);
+          } else {
+            // Natural engine deceleration
+            vehicleSpeed = THREE.MathUtils.damp(vehicleSpeed, 0, 4.5, dt);
           }
 
-          if (isJet && isJumping && vehicleSpeed > 30) {
-            flightAltitude = Math.min(flightAltitude + 25 * dt, 110);
+          // Handbrake on Space
+          if (isJumping) {
+            vehicleSpeed = THREE.MathUtils.damp(vehicleSpeed, 0, 10, dt);
+          }
+
+          if (Math.abs(vehicleSpeed) > 0.3) {
+            playerHeading += moveTurn * 2.0 * dt * (vehicleSpeed > 0 ? 1 : -1);
+          }
+
+          if (isJet && isJumping && vehicleSpeed > 25) {
+            flightAltitude = Math.min(flightAltitude + 20 * dt, 110);
           } else if (isJet && keys['KeyC']) {
             flightAltitude = Math.max(0, flightAltitude - 20 * dt);
           }
 
-          _forward.set(Math.sin(playerHeading), 0, Math.cos(playerHeading));
-          playerPos.addScaledVector(_forward, vehicleSpeed * dt);
-          playerPos.y = flightAltitude;
+          // Step with solid building collision checks!
+          const vStepX = Math.sin(playerHeading) * vehicleSpeed * dt;
+          const vStepZ = Math.cos(playerHeading) * vehicleSpeed * dt;
 
+          const nextVehX = playerPos.x + vStepX;
+          const nextVehZ = playerPos.z + vStepZ;
+
+          // Check building collision for vehicle (1.5 radius)
+          if (!checkBuildingCollision(nextVehX, playerPos.z, 1.5)) {
+            playerPos.x = nextVehX;
+          } else {
+            // Hit building: stop and soft bounce
+            vehicleSpeed = -vehicleSpeed * 0.2;
+          }
+
+          if (!checkBuildingCollision(playerPos.x, nextVehZ, 1.5)) {
+            playerPos.z = nextVehZ;
+          } else {
+            vehicleSpeed = -vehicleSpeed * 0.2;
+          }
+
+          playerPos.y = flightAltitude;
           vehicleMesh.position.copy(playerPos);
           vehicleMesh.rotation.y = playerHeading;
           sound.updateEngineSound(Math.abs(vehicleSpeed) / maxSpeed, isJet);
 
           _camOffset.set(
-            playerPos.x - Math.sin(playerHeading) * (isJet ? 22 : 10),
-            playerPos.y + (isJet ? 8 : 4.5),
-            playerPos.z - Math.cos(playerHeading) * (isJet ? 22 : 10)
+            playerPos.x - Math.sin(playerHeading) * (isJet ? 22 : 9.5),
+            playerPos.y + (isJet ? 8 : 4.2),
+            playerPos.z - Math.cos(playerHeading) * (isJet ? 22 : 9.5)
           );
-          camera.position.x = THREE.MathUtils.damp(camera.position.x, _camOffset.x, 6, dt);
-          camera.position.y = THREE.MathUtils.damp(camera.position.y, _camOffset.y, 6, dt);
-          camera.position.z = THREE.MathUtils.damp(camera.position.z, _camOffset.z, 6, dt);
+          camera.position.x = THREE.MathUtils.damp(camera.position.x, _camOffset.x, 6.5, dt);
+          camera.position.y = THREE.MathUtils.damp(camera.position.y, _camOffset.y, 6.5, dt);
+          camera.position.z = THREE.MathUtils.damp(camera.position.z, _camOffset.z, 6.5, dt);
           camera.lookAt(playerPos.x, playerPos.y + 1.2, playerPos.z);
 
         } else {
-          // On Foot Character Controller (GTA-style Walk & Sprint)
+          // --- ON-FOOT THIRD-PERSON GTA CHARACTER CONTROLLER ---
           sound.stopEngineSound();
 
           // Calculate analog joystick magnitude
@@ -385,7 +475,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           const isSprintByAnalog = analogMag > 0.65;
           const isSprinting = keys['ShiftLeft'] || keys['ShiftRight'] || touch.sprint || isSprintByAnalog;
 
-          const baseSpeed = isSprinting ? 9.5 : (analogMag > 0.1 ? 2.8 + analogMag * 2.8 : 4.8);
+          const baseSpeed = isSprinting ? 8.5 : (analogMag > 0.1 ? 2.5 + analogMag * 2.5 : 4.2);
           const hasInput = Math.abs(moveForward) > 0.05 || Math.abs(moveTurn) > 0.05 || analogMag > 0.08;
 
           if (hasInput && !dancing) {
@@ -398,8 +488,20 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             while (diff > Math.PI) diff -= Math.PI * 2;
             playerHeading += diff * Math.min(1, 14 * dt);
 
-            _vec3.set(Math.sin(playerHeading), 0, Math.cos(playerHeading));
-            playerPos.addScaledVector(_vec3, baseSpeed * dt);
+            // Move with solid building collision detection (0.45m radius)
+            const stepX = Math.sin(playerHeading) * baseSpeed * dt;
+            const stepZ = Math.cos(playerHeading) * baseSpeed * dt;
+
+            const nextX = playerPos.x + stepX;
+            const nextZ = playerPos.z + stepZ;
+
+            // Slide along walls if colliding with any building
+            if (!checkBuildingCollision(nextX, playerPos.z, 0.45)) {
+              playerPos.x = nextX;
+            }
+            if (!checkBuildingCollision(playerPos.x, nextZ, 0.45)) {
+              playerPos.z = nextZ;
+            }
 
             // Animate limbs smoothly proportional to actual running speed
             const animFreq = isSprinting ? 14 : 8.5;
@@ -419,7 +521,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               limbs.rightArm.rotation.x = cycle * armAmp;
             }
 
-            // Subtle vertical walking/running bob for weight and realism
+            // Subtle vertical walking/running bob for physical weight and realism
             if (isGrounded) {
               playerMesh.position.y = Math.abs(Math.sin(clock.getElapsedTime() * animFreq)) * (isSprinting ? 0.08 : 0.04);
             }
@@ -447,7 +549,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           }
 
           if (isJumping && isGrounded && !dancing) {
-            playerVelocityY = 7.2;
+            playerVelocityY = 7.0;
             isGrounded = false;
           }
 
@@ -563,7 +665,19 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         container.removeChild(renderer.domElement);
       }
     };
-  }, [viewMode, activeFloor, player.skinTone, player.outfitColor, player.activeVehicleId, player.placedFurniture]);
+  }, [
+    viewMode,
+    activeFloor,
+    player.skinTone,
+    player.outfitColor,
+    player.outfitStyle,
+    player.hasGlasses,
+    player.hasGoldChain,
+    player.hasWatch,
+    player.hairStyle,
+    player.activeVehicleId,
+    player.placedFurniture,
+  ]);
 
   return (
     <div

@@ -16,6 +16,7 @@ import { PhoneModal } from './components/PhoneModal';
 import { MapOverlay } from './components/MapOverlay';
 import { AdminFixModal } from './components/AdminFixModal';
 import { ChatAndFriendsModal } from './components/ChatAndFriendsModal';
+import { AvatarWardrobeModal } from './components/AvatarWardrobeModal';
 import { PlayerProfile, PlacedFurniture, DeltaLocation, Friend, ChatMessage } from './types';
 import { WELCOME_BONUS_NAIRA, DELTA_LOCATIONS, INITIAL_FRIENDS, INITIAL_CHAT_MESSAGES } from './game/constants';
 import { sound } from './utils/audio';
@@ -76,6 +77,7 @@ export default function App() {
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [isAdminFixOpen, setIsAdminFixOpen] = useState(false);
   const [isChatAndFriendsOpen, setIsChatAndFriendsOpen] = useState(false);
+  const [isWardrobeOpen, setIsWardrobeOpen] = useState(false);
 
   // Multiplayer Social state
   const [friends, setFriends] = useState<Friend[]>(INITIAL_FRIENDS);
@@ -140,9 +142,16 @@ export default function App() {
     sound.playClick();
 
     setTimeout(() => {
+      if (goingOutside) {
+        // When stepping outside, ensure player is on foot so realistic 3D GTA character is visible!
+        savePlayerState({
+          ...player,
+          activeVehicleId: null,
+        });
+      }
       setViewMode(goingOutside ? 'street_walk' : 'house_dollhouse');
       setTransitionText(null);
-    }, 600);
+    }, 450);
   };
 
   // Bottom Navigation Bar Select
@@ -477,10 +486,19 @@ export default function App() {
           onToggleMute={handleToggleMute}
           isMuted={isMuted}
           onOpenChatAndFriends={() => setIsChatAndFriendsOpen(true)}
+          onOpenWardrobe={() => setIsWardrobeOpen(true)}
           onOpenAdminFix={() => setIsAdminFixOpen(true)}
           touchInputRef={touchInputRef}
         />
       )}
+
+      {/* Avatar Wardrobe & Boutique (GTA Style clothes and avatar editor) */}
+      <AvatarWardrobeModal
+        isOpen={isWardrobeOpen}
+        onClose={() => setIsWardrobeOpen(false)}
+        player={player}
+        onUpdateProfile={savePlayerState}
+      />
 
       {/* Buy Mode / Catalogue for House matching video 00:31-00:46 */}
       <HouseCustomizerModal
@@ -502,6 +520,7 @@ export default function App() {
         onOpenCoinShop={() => setIsCoinShopOpen(true)}
         onRentHouse={() => setIsAuthOpen(true)}
         onOpenTransfers={() => setIsChatAndFriendsOpen(true)}
+        onOpenWardrobe={() => setIsWardrobeOpen(true)}
       />
 
       {/* Interactive 3D Map Overlay matching video 00:10-00:30 */}

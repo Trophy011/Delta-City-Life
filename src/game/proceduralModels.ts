@@ -63,10 +63,20 @@ export function createCharacterMesh(
   skinTone = '#8d5524',
   outfitColor = '#18181b',
   isPedestrian = false,
-  role: 'player' | 'street' | 'tycoon' | 'police' | 'casual' = 'player'
+  role: 'player' | 'street' | 'tycoon' | 'police' | 'casual' | 'senator' | 'bomber' = 'player',
+  options?: {
+    hasGlasses?: boolean;
+    hasGoldChain?: boolean;
+    hasWatch?: boolean;
+    hairStyle?: string;
+  }
 ) {
   const group = new THREE.Group();
   group.name = isPedestrian ? `pedestrian_${role}` : 'player_character';
+  const showGlasses = options?.hasGlasses ?? true;
+  const showChain = options?.hasGoldChain ?? (role !== 'police');
+  const showWatch = options?.hasWatch ?? true;
+  const hairStyle = options?.hairStyle ?? 'fade';
 
   const skinMat = new THREE.MeshStandardMaterial({
     color: new THREE.Color(skinTone),
@@ -114,11 +124,11 @@ export function createCharacterMesh(
   group.add(innerChest);
 
   // Gold chain necklace (GTA street baller aesthetic)
-  if (role !== 'police') {
+  if (role !== 'police' && showChain) {
     const chain = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.06, 0.03), MaterialLibrary.goldMat);
     chain.position.set(0, 1.25, 0.16);
     group.add(chain);
-  } else {
+  } else if (role === 'police') {
     // Police badge
     const badge = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.09, 0.02), MaterialLibrary.goldMat);
     badge.position.set(0.14, 1.2, 0.16);
@@ -147,14 +157,16 @@ export function createCharacterMesh(
   group.add(head);
 
   // Dark aviator sunglasses (classic GTA Vice City / San Andreas style)
-  const shades = new THREE.Mesh(
-    new THREE.BoxGeometry(0.34, 0.08, 0.06),
-    new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.05, metalness: 0.95 })
-  );
-  shades.position.set(0, 1.6, 0.16);
-  const bridge = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.03, 0.06), MaterialLibrary.goldMat);
-  bridge.position.set(0, 1.62, 0.16);
-  group.add(shades, bridge);
+  if (showGlasses) {
+    const shades = new THREE.Mesh(
+      new THREE.BoxGeometry(0.34, 0.08, 0.06),
+      new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.05, metalness: 0.95 })
+    );
+    shades.position.set(0, 1.6, 0.16);
+    const bridge = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.03, 0.06), MaterialLibrary.goldMat);
+    bridge.position.set(0, 1.62, 0.16);
+    group.add(shades, bridge);
+  }
 
   // Hair or Police Cap
   if (role === 'police') {
@@ -169,13 +181,14 @@ export function createCharacterMesh(
     );
     visor.position.set(0, 1.74, 0.15);
     group.add(cap, visor);
-  } else {
-    // Fade haircut / Afro taper
+  } else if (hairStyle !== 'clean_shave') {
+    // Fade haircut / Afro taper / Dreads
+    const hairH = hairStyle === 'dreads' ? 0.22 : hairStyle === 'afro_taper' ? 0.18 : 0.12;
     const hair = new THREE.Mesh(
-      new THREE.BoxGeometry(0.34, 0.12, 0.32),
+      new THREE.BoxGeometry(0.34, hairH, 0.32),
       new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.95 })
     );
-    hair.position.set(0, 1.76, -0.01);
+    hair.position.set(0, 1.70 + hairH / 2, -0.01);
     group.add(hair);
   }
 
@@ -191,9 +204,11 @@ export function createCharacterMesh(
   leftArmPivot.add(leftHand);
 
   // Gold / Steel Watch on Left Wrist (GTA status flex!)
-  const watch = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.05, 8), MaterialLibrary.goldMat);
-  watch.position.set(0, -0.46, 0);
-  leftArmPivot.add(watch);
+  if (showWatch) {
+    const watch = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.05, 8), MaterialLibrary.goldMat);
+    watch.position.set(0, -0.46, 0);
+    leftArmPivot.add(watch);
+  }
   group.add(leftArmPivot);
 
   // Right Arm (pivot at shoulder)

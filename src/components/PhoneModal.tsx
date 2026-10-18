@@ -27,6 +27,7 @@ interface PhoneModalProps {
   onOpenCoinShop: () => void;
   onRentHouse: () => void;
   onOpenTransfers?: () => void;
+  onOpenWardrobe?: () => void;
 }
 
 export const PhoneModal: React.FC<PhoneModalProps> = ({
@@ -38,6 +39,7 @@ export const PhoneModal: React.FC<PhoneModalProps> = ({
   onOpenCoinShop,
   onRentHouse,
   onOpenTransfers,
+  onOpenWardrobe,
 }) => {
   const [activeApp, setActiveApp] = useState<'home' | 'messages' | 'cab' | 'chat_thread'>('home');
   const [selectedThread, setSelectedThread] = useState<typeof INITIAL_PHONE_MESSAGES[0] | null>(null);
@@ -222,6 +224,21 @@ export const PhoneModal: React.FC<PhoneModalProps> = ({
                     <span className="text-xl font-black">₦</span>
                   </div>
                   <span className="text-[11px] font-semibold text-slate-200">Transfer</span>
+                </button>
+
+                {/* Delta Drip / Wardrobe */}
+                <button
+                  onClick={() => {
+                    sound.playClick();
+                    if (onOpenWardrobe) onOpenWardrobe();
+                    onClose();
+                  }}
+                  className="flex flex-col items-center gap-1 group cursor-pointer"
+                >
+                  <div className="w-13 h-13 rounded-2xl bg-gradient-to-br from-amber-500 to-yellow-400 flex items-center justify-center text-slate-950 shadow-md group-hover:scale-105 transition-transform">
+                    <span className="text-xl">👔</span>
+                  </div>
+                  <span className="text-[11px] font-semibold text-slate-200">Delta Drip</span>
                 </button>
 
                 {/* PopOut Tickets */}

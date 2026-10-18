@@ -32,9 +32,18 @@ export const MapOverlay: React.FC<MapOverlayProps> = ({
   player,
   onSelectDestinationCab,
 }) => {
+  const [selectedCity, setSelectedCity] = useState<string>('All');
   const [selectedLocation, setSelectedLocation] = useState<DeltaLocation | null>(DELTA_LOCATIONS[1]); // Default to Club Empire!
 
   if (!isOpen) return null;
+
+  const CITIES = ['All', 'Warri', 'Asaba', 'Sapele', 'Agbor', 'Abraka'] as const;
+
+  const filteredLocations = DELTA_LOCATIONS.filter((loc) => {
+    if (selectedCity === 'All') return true;
+    if (selectedCity === 'Warri') return loc.area === 'Warri' || loc.area === 'Effurun';
+    return loc.area === selectedCity;
+  });
 
   const getLocationIcon = (category: string) => {
     switch (category) {
@@ -66,12 +75,15 @@ export const MapOverlay: React.FC<MapOverlayProps> = ({
   };
 
   return (
-    <div className="absolute inset-0 z-30 pointer-events-none flex flex-col justify-between p-4 md:p-6 select-none">
+    <div className="absolute inset-0 z-30 pointer-events-none flex flex-col justify-between p-3 sm:p-5 select-none bg-black/40 backdrop-blur-[2px]">
       {/* Top Banner on Map View */}
       <div className="pointer-events-auto flex items-center justify-between">
-        <div className="bg-slate-900/90 border border-slate-700 rounded-2xl px-4 py-2 flex items-center gap-2 shadow-lg">
+        <div className="bg-slate-900/95 border border-slate-700/80 rounded-2xl px-4 py-2.5 flex items-center gap-2.5 shadow-xl">
           <Compass className="w-5 h-5 text-emerald-400 animate-spin" />
-          <span className="font-bold text-sm text-white">Delta State Interactive GPS Map</span>
+          <div>
+            <div className="font-black text-xs sm:text-sm text-white">Delta State Interactive GPS Highway Map</div>
+            <div className="text-[10px] text-slate-400">Main Road Navigation & Highway Routing</div>
+          </div>
         </div>
 
         <button
@@ -79,27 +91,47 @@ export const MapOverlay: React.FC<MapOverlayProps> = ({
             sound.playClick();
             onClose();
           }}
-          className="p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-white cursor-pointer shadow-lg"
+          className="p-2.5 rounded-2xl bg-slate-900/95 hover:bg-slate-800 border border-slate-700 text-white cursor-pointer shadow-xl transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
       </div>
 
-      {/* Floating 3D Map Markers Cluster (matching video 00:10-00:27!) */}
-      <div className="pointer-events-auto my-auto max-w-4xl w-full mx-auto bg-slate-900/80 border border-slate-700/80 rounded-3xl p-5 shadow-2xl backdrop-blur-md">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+      {/* Floating 3D Map Markers Cluster */}
+      <div className="pointer-events-auto my-auto max-w-4xl w-full mx-auto bg-slate-900/95 border border-slate-700/80 rounded-3xl p-4 sm:p-5 shadow-2xl backdrop-blur-md">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-800 gap-2">
           <div>
-            <div className="text-xs text-slate-400">Delta State Destinations</div>
-            <div className="text-base font-black text-white">Select a Landmark to Visit or Call a Cab</div>
+            <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Delta State Cities & Landmarks</div>
+            <div className="text-sm sm:text-base font-black text-white">Select a Landmark in Warri, Asaba, Sapele, Agbor or Abraka</div>
           </div>
-          <div className="text-xs text-emerald-400 font-bold tabular-nums">
+          <div className="text-xs text-emerald-400 font-black tabular-nums bg-emerald-950/80 px-3 py-1.5 rounded-xl border border-emerald-800/80 self-start sm:self-auto">
             Wallet: ₦{player.balance.toLocaleString()}
           </div>
         </div>
 
-        {/* Location Grid Pins matching video */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-4 max-h-[38vh] overflow-y-auto">
-          {DELTA_LOCATIONS.map((loc) => {
+        {/* City Filter Tabs (All, Warri, Asaba, Sapele, Agbor, Abraka) */}
+        <div className="flex items-center gap-1.5 pt-3 pb-2 overflow-x-auto">
+          {CITIES.map((city) => (
+            <button
+              key={city}
+              onClick={() => {
+                sound.playClick();
+                setSelectedCity(city);
+              }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
+                selectedCity === city
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 ring-2 ring-emerald-500/30'
+                  : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+              }`}
+            >
+              {city === 'All' ? '🌟 All Delta Cities' : `📍 ${city}`}
+            </button>
+          ))}
+        </div>
+
+        {/* Location Grid Pins */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-2 max-h-[36vh] overflow-y-auto">
+          {filteredLocations.map((loc) => {
             const isSelected = selectedLocation?.id === loc.id;
             return (
               <button
@@ -117,11 +149,16 @@ export const MapOverlay: React.FC<MapOverlayProps> = ({
                 <div className="w-8 h-8 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center shrink-0">
                   {getLocationIcon(loc.category)}
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="font-bold text-xs text-white truncate">{loc.name}</div>
-                  <div className="text-[10px] text-slate-400">{loc.area}</div>
-                  <div className="text-[10px] text-emerald-400 font-bold mt-1">
-                    {loc.cabFare > 0 ? `Cab: ₦${loc.cabFare.toLocaleString()}` : 'Free / Own Villa'}
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-[10px] text-amber-300 font-bold bg-amber-950/60 px-1.5 py-0.2 rounded border border-amber-800/40">
+                      {loc.area}
+                    </span>
+                    <span className="text-[10px] text-slate-400 capitalize">{loc.category}</span>
+                  </div>
+                  <div className="text-[10px] text-emerald-400 font-black mt-1">
+                    {loc.cabFare > 0 ? `Cab Fare: ₦${loc.cabFare.toLocaleString()}` : 'Free / Own Villa'}
                   </div>
                 </div>
               </button>

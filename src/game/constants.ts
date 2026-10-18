@@ -35,6 +35,7 @@ export const COIN_PACKAGES: CoinPackage[] = [
 ];
 
 export const DELTA_LOCATIONS: DeltaLocation[] = [
+  // --- WARRI & EFFURUN ---
   {
     id: 'loc_home',
     name: 'Your House (Warri Villa)',
@@ -126,31 +127,169 @@ export const DELTA_LOCATIONS: DeltaLocation[] = [
     hasInterior: false,
     tagline: 'Commercial Transit Junction'
   },
+
+  // --- ASABA (Delta State Capital) ---
   {
     id: 'loc_asaba_waterfront',
     name: 'Asaba Waterfront & River Niger Bridge',
     area: 'Asaba',
     category: 'landmark',
-    description: 'Delta State capital avenue overlooking the majestic River Niger, government ministries, and cyber tech parks.',
+    description: 'Delta State capital avenue overlooking the majestic River Niger, Denis Osadebay way, and trading hubs.',
     icon: 'Compass',
-    x: 160,
+    x: 180,
     z: 80,
     cabFare: 6500,
     hasInterior: false,
     tagline: 'State Capital & River Views'
   },
   {
+    id: 'loc_asaba_airport',
+    name: 'Asaba International Airport',
+    area: 'Asaba',
+    category: 'airport',
+    description: 'State capital international airport connecting Delta State to Lagos, Abuja, and international flights.',
+    icon: 'Plane',
+    x: 180,
+    z: -90,
+    cabFare: 7500,
+    hasInterior: false,
+    tagline: 'International Flight Terminal'
+  },
+  {
+    id: 'loc_asaba_stadium',
+    name: 'Stephen Keshi International Stadium',
+    area: 'Asaba',
+    category: 'landmark',
+    description: 'Premier Delta sports arena, national football matches, athletic tracks, and high-energy championship tournaments.',
+    icon: 'Navigation',
+    x: 150,
+    z: 30,
+    cabFare: 5500,
+    hasInterior: false,
+    tagline: 'Championship Arena & Sports'
+  },
+  {
+    id: 'loc_asaba_gov',
+    name: 'Delta State Government House (Asaba)',
+    area: 'Asaba',
+    category: 'palace',
+    description: 'Executive governor seat of Delta State, VIP security motorcades, manicured state gardens, and administrative avenues.',
+    icon: 'Crown',
+    x: 170,
+    z: 140,
+    cabFare: 7000,
+    hasInterior: false,
+    tagline: 'Delta State Seat of Power'
+  },
+
+  // --- SAPELE ---
+  {
+    id: 'loc_sapele_port',
+    name: 'Sapele Seaport & Timber Market',
+    area: 'Sapele',
+    category: 'refinery',
+    description: 'Historic Nigerian colonial seaport on the Benin River, famous timber sawmill processing, and maritime shipping wharves.',
+    icon: 'Fuel',
+    x: -180,
+    z: -70,
+    cabFare: 4200,
+    hasInterior: false,
+    tagline: 'Maritime Trade & Timber Hub'
+  },
+  {
+    id: 'loc_sapele_athletic',
+    name: 'Sapele Athletic Club (Est. 1880)',
+    area: 'Sapele',
+    category: 'club',
+    description: 'The oldest recreational sports club in Nigeria! Lawn tennis courts, colonial lounge, and evening jazz dining.',
+    icon: 'Music',
+    x: -160,
+    z: -30,
+    cabFare: 3800,
+    hasInterior: true,
+    tagline: 'Heritage Sports & Lounge'
+  },
+  {
+    id: 'loc_sapele_bridge',
+    name: 'Ethiope River Sapele Bridge',
+    area: 'Sapele',
+    category: 'landmark',
+    description: 'Scenic twin bridges spanning the wide Ethiope River, fishermen boats, and fresh catfish pepper-soup joints.',
+    icon: 'Compass',
+    x: -150,
+    z: -120,
+    cabFare: 4000,
+    hasInterior: false,
+    tagline: 'Riverside Fish Market & Bridge'
+  },
+
+  // --- AGBOR ---
+  {
+    id: 'loc_agbor_train',
+    name: 'Agbor Standard Gauge Train Station',
+    area: 'Agbor',
+    category: 'landmark',
+    description: 'Modern modern railway station connecting Warri, Agbor, and Itakpe with high-speed express trains.',
+    icon: 'Navigation',
+    x: 40,
+    z: 140,
+    cabFare: 5500,
+    hasInterior: false,
+    tagline: 'Delta High-Speed Rail Hub'
+  },
+  {
+    id: 'loc_agbor_palace',
+    name: 'Dein of Agbor Royal Palace',
+    area: 'Agbor',
+    category: 'palace',
+    description: 'Centuries-old royal palace of the Dein of Agbor (Ika Kingdom), renowned for world-record youngest crowned monarch.',
+    icon: 'Crown',
+    x: -40,
+    z: 140,
+    cabFare: 5800,
+    hasInterior: false,
+    tagline: 'Historic Ika Monarchy'
+  },
+  {
+    id: 'loc_agbor_college',
+    name: 'University of Delta (College of Ed) Agbor',
+    area: 'Agbor',
+    category: 'mall',
+    description: 'Renowned academic center, student boulevards, tech cyber cafes, and youth innovation spaces.',
+    icon: 'ShoppingBag',
+    x: 90,
+    z: 140,
+    cabFare: 5200,
+    hasInterior: false,
+    tagline: 'Academic Campus & Innovation'
+  },
+
+  // --- ABRAKA ---
+  {
     id: 'loc_abraka_ethiope',
-    name: 'River Ethiope Oasis (Abraka)',
+    name: 'Abraka River Resort Motel & Beach',
     area: 'Abraka',
     category: 'landmark',
-    description: 'Famous natural spring river with crystal clear freshwater, bamboo canopies, and serene relaxation.',
+    description: 'World-famous natural spring river with 100% crystal-clear emerald water, white sand beaches, and eco-lodges.',
     icon: 'Waves',
     x: -80,
     z: 140,
     cabFare: 5000,
     hasInterior: false,
     tagline: 'Crystal Clear Eco-Resort'
+  },
+  {
+    id: 'loc_abraka_delsu',
+    name: 'DELSU Main Campus (Abraka)',
+    area: 'Abraka',
+    category: 'landmark',
+    description: 'Delta State University main campus, sprawling faculty buildings, campus shuttle kekes, and vibrant student life.',
+    icon: 'Navigation',
+    x: -130,
+    z: 140,
+    cabFare: 4800,
+    hasInterior: false,
+    tagline: 'Delta State University Campus'
   }
 ];
 

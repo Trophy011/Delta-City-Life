@@ -24,6 +24,10 @@ export interface PlayerProfile {
   createdAt: string;
   isAdmin?: boolean;
   friends: Friend[];
+  outfitStyle?: 'street' | 'senator' | 'tycoon' | 'casual' | 'bomber';
+  hasGlasses?: boolean;
+  hasGoldChain?: boolean;
+  hasWatch?: boolean;
 }
 
 export interface Friend {
@@ -123,7 +127,7 @@ export interface JobDefinition {
 export interface DeltaLocation {
   id: string;
   name: string;
-  area: 'Warri' | 'Effurun' | 'Asaba' | 'Sapele' | 'Abraka';
+  area: 'Warri' | 'Effurun' | 'Asaba' | 'Sapele' | 'Agbor' | 'Abraka';
   category: 'refinery' | 'club' | 'mall' | 'landmark' | 'airport' | 'residence' | 'food' | 'palace';
   description: string;
   icon: string;

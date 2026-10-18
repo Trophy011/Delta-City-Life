@@ -3,6 +3,14 @@ import { MaterialLibrary, createCashPickupMesh, createFurnitureMesh, createChara
 import { PlacedFurniture, DeltaLocation } from '../types';
 import { DELTA_LOCATIONS } from './constants';
 
+export interface BuildingCollider {
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+  name?: string;
+}
+
 export interface WorldObjects {
   scene: THREE.Scene;
   cashPickups: THREE.Group[];
@@ -11,6 +19,7 @@ export interface WorldObjects {
   exteriorGroup: THREE.Group;
   pedestrians: THREE.Group[];
   streetVehicles: THREE.Group[];
+  buildingColliders: BuildingCollider[];
 }
 
 export function buildOpenWorldScene(scene: THREE.Scene): WorldObjects {
@@ -21,6 +30,17 @@ export function buildOpenWorldScene(scene: THREE.Scene): WorldObjects {
   const cashPickups: THREE.Group[] = [];
   const pedestrians: THREE.Group[] = [];
   const streetVehicles: THREE.Group[] = [];
+  const buildingColliders: BuildingCollider[] = [];
+
+  const addCollider = (cx: number, cz: number, sizeX: number, sizeZ: number, name = 'building') => {
+    buildingColliders.push({
+      minX: cx - sizeX / 2,
+      maxX: cx + sizeX / 2,
+      minZ: cz - sizeZ / 2,
+      maxZ: cz + sizeZ / 2,
+      name,
+    });
+  };
 
   // 1. Terrain Ground (Expansive Nigerian green & red soil terrain extending beyond view)
   const groundGeom = new THREE.PlaneGeometry(1600, 1600, 24, 24);
@@ -29,7 +49,7 @@ export function buildOpenWorldScene(scene: THREE.Scene): WorldObjects {
   ground.receiveShadow = true;
   exteriorGroup.add(ground);
 
-  // 2. Comprehensive Road Network with Sidewalks & Crosswalks
+  // 2. Comprehensive Road Network with Raised Pedestrian Sidewalks & Curbs
   const addRoad = (x: number, z: number, width: number, length: number, isVertical = false) => {
     const road = new THREE.Mesh(
       new THREE.PlaneGeometry(isVertical ? length : width, isVertical ? width : length),
@@ -40,28 +60,28 @@ export function buildOpenWorldScene(scene: THREE.Scene): WorldObjects {
     road.receiveShadow = true;
     exteriorGroup.add(road);
 
-    // Concrete Sidewalks on both sides of road
-    const walkW = 2.4;
+    // Concrete Raised Sidewalks on both sides of road (pedestrian walking lanes!)
+    const walkW = 2.8;
+    const curbH = 0.14;
+
     const s1 = new THREE.Mesh(
-      new THREE.PlaneGeometry(isVertical ? length : walkW, isVertical ? walkW : length),
+      new THREE.BoxGeometry(isVertical ? length : walkW, curbH, isVertical ? walkW : length),
       MaterialLibrary.sidewalkMat
     );
-    s1.rotation.x = -Math.PI / 2;
     s1.position.set(
       isVertical ? x : x - width / 2 - walkW / 2,
-      0.035,
+      curbH / 2,
       isVertical ? z - width / 2 - walkW / 2 : z
     );
     s1.receiveShadow = true;
 
     const s2 = new THREE.Mesh(
-      new THREE.PlaneGeometry(isVertical ? length : walkW, isVertical ? walkW : length),
+      new THREE.BoxGeometry(isVertical ? length : walkW, curbH, isVertical ? walkW : length),
       MaterialLibrary.sidewalkMat
     );
-    s2.rotation.x = -Math.PI / 2;
     s2.position.set(
       isVertical ? x : x + width / 2 + walkW / 2,
-      0.035,
+      curbH / 2,
       isVertical ? z + width / 2 + walkW / 2 : z
     );
     s2.receiveShadow = true;
@@ -73,7 +93,7 @@ export function buildOpenWorldScene(scene: THREE.Scene): WorldObjects {
       MaterialLibrary.roadLineMat
     );
     line.rotation.x = -Math.PI / 2;
-    line.position.set(x, 0.03, z);
+    line.position.set(x, 0.035, z);
     exteriorGroup.add(line);
   };
 
@@ -356,6 +376,7 @@ export function buildOpenWorldScene(scene: THREE.Scene): WorldObjects {
     tL.position.set(b, 14 + (Math.abs(b) % 12.5), -32);
     tL.castShadow = true;
     exteriorGroup.add(tL);
+    addCollider(b, -32, 18, 18, 'TowerLeft');
 
     // Glass curtain facade
     const glassFacade = new THREE.Mesh(new THREE.BoxGeometry(15, 24 + (Math.abs(b) % 25), 0.2), glassTowerMat);
@@ -367,6 +388,7 @@ export function buildOpenWorldScene(scene: THREE.Scene): WorldObjects {
     tR.position.set(b, 12 + (Math.abs(b) % 10), 32);
     tR.castShadow = true;
     exteriorGroup.add(tR);
+    addCollider(b, 32, 18, 18, 'TowerRight');
   }
 
   // 3. Residential Street Neighborhood (As seen in video 00:54-01:13)
@@ -380,6 +402,7 @@ export function buildOpenWorldScene(scene: THREE.Scene): WorldObjects {
     wallL.position.set(-108, 1.2, z);
     wallL.castShadow = true;
     exteriorGroup.add(wallL);
+    addCollider(-108, z, 1.2, 20, 'CompoundWallLeft');
 
     // Gate pillar
     const pillarL = new THREE.Mesh(
@@ -397,6 +420,7 @@ export function buildOpenWorldScene(scene: THREE.Scene): WorldObjects {
     wallR.position.set(-92, 1.2, z);
     wallR.castShadow = true;
     exteriorGroup.add(wallR);
+    addCollider(-92, z, 1.2, 20, 'CompoundWallRight');
 
     // Neighbor houses behind walls
     const neighborHouse = new THREE.Mesh(
@@ -409,6 +433,7 @@ export function buildOpenWorldScene(scene: THREE.Scene): WorldObjects {
     neighborHouse.position.set(-122, 3.5, z);
     neighborHouse.castShadow = true;
     exteriorGroup.add(neighborHouse);
+    addCollider(-122, z, 14, 16, 'NeighborHouse');
   }
 
   // 4. Player Residence Exterior
@@ -423,6 +448,7 @@ export function buildOpenWorldScene(scene: THREE.Scene): WorldObjects {
   villaBody.position.set(0, 4.5, 0);
   villaBody.castShadow = true;
   playerHouseCompound.add(villaBody);
+  addCollider(-100, 70, 22, 18, 'PlayerVillaDuplex');
 
   // Front Compound Gate
   const gateL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 2.8, 0.8), MaterialLibrary.compoundWallMat);
@@ -481,6 +507,7 @@ export function buildOpenWorldScene(scene: THREE.Scene): WorldObjects {
   clubBuilding.add(danceFloor);
 
   exteriorGroup.add(clubBuilding);
+  addCollider(50, 60, 28, 24, 'ClubEmpire');
 
   // Cash drops scattered on Club Empire floor (pickable money!)
   const cashLocations = [
@@ -536,6 +563,7 @@ export function buildOpenWorldScene(scene: THREE.Scene): WorldObjects {
   }
 
   exteriorGroup.add(refinery);
+  addCollider(-70, -80, 32, 32, 'RefineryWRPC');
 
   // 7. Osubi Airport Runway & Terminal
   const airport = new THREE.Group();
@@ -562,6 +590,7 @@ export function buildOpenWorldScene(scene: THREE.Scene): WorldObjects {
   }
 
   exteriorGroup.add(airport);
+  addCollider(130, -70, 30, 30, 'OsubiAirport');
 
   // 8. Delta Mall & Shoprite
   const mall = new THREE.Group();
@@ -574,6 +603,7 @@ export function buildOpenWorldScene(scene: THREE.Scene): WorldObjects {
   mallBuilding.castShadow = true;
   mall.add(mallBuilding);
   exteriorGroup.add(mall);
+  addCollider(70, -10, 32, 30, 'DeltaMall');
 
   // 9. Authentic Street Environment matching video 00:00-00:47:
   // Store Billboards & Street Names
@@ -733,6 +763,138 @@ export function buildOpenWorldScene(scene: THREE.Scene): WorldObjects {
   exteriorGroup.add(sedanParked);
   streetVehicles.push(sedanParked);
 
+  // --- 10. ASABA LANDMARK DISTRICT ---
+  // Stephen Keshi International Stadium (Asaba)
+  const stadium = new THREE.Group();
+  stadium.position.set(150, 0, 30);
+  const pitch = new THREE.Mesh(new THREE.PlaneGeometry(36, 26), new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.8 }));
+  pitch.rotation.x = -Math.PI / 2;
+  pitch.position.y = 0.05;
+  const bowl = new THREE.Mesh(new THREE.BoxGeometry(42, 7, 32), new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.4 }));
+  bowl.position.y = 3.5;
+  stadium.add(pitch, bowl);
+  exteriorGroup.add(stadium);
+  addCollider(150, 30, 42, 32, 'StephenKeshiStadium');
+
+  // Asaba Waterfront & River Niger Bridge (Asaba)
+  const bridgeGroup = new THREE.Group();
+  bridgeGroup.position.set(180, 0, 80);
+  const waterPlane = new THREE.Mesh(new THREE.PlaneGeometry(70, 50), new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.1, metalness: 0.5 }));
+  waterPlane.rotation.x = -Math.PI / 2;
+  waterPlane.position.y = 0.01;
+  const pylon1 = new THREE.Mesh(new THREE.BoxGeometry(3, 24, 3), MaterialLibrary.chromeMat);
+  pylon1.position.set(-8, 12, 0);
+  const pylon2 = new THREE.Mesh(new THREE.BoxGeometry(3, 24, 3), MaterialLibrary.chromeMat);
+  pylon2.position.set(8, 12, 0);
+  const bridgeSpan = new THREE.Mesh(new THREE.BoxGeometry(26, 0.8, 14), MaterialLibrary.roadMat);
+  bridgeSpan.position.set(0, 3, 0);
+  bridgeGroup.add(waterPlane, pylon1, pylon2, bridgeSpan);
+  exteriorGroup.add(bridgeGroup);
+  addCollider(180, 80, 26, 14, 'RiverNigerBridge');
+
+  // Delta State Government House (Asaba)
+  const govHouse = new THREE.Group();
+  govHouse.position.set(170, 0, 140);
+  const govBody = new THREE.Mesh(new THREE.BoxGeometry(32, 11, 24), new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3 }));
+  govBody.position.y = 5.5;
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(5.5, 16, 16), MaterialLibrary.goldMat);
+  dome.position.set(0, 13.5, 0);
+  govHouse.add(govBody, dome);
+  exteriorGroup.add(govHouse);
+  addCollider(170, 140, 32, 24, 'DeltaGovHouse');
+
+  // Asaba International Airport Terminal
+  const asabaAirport = new THREE.Group();
+  asabaAirport.position.set(180, 0, -90);
+  const asabaTerminal = new THREE.Mesh(new THREE.BoxGeometry(28, 8, 22), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.3 }));
+  asabaTerminal.position.y = 4;
+  const asabaTower = new THREE.Mesh(new THREE.CylinderGeometry(2, 3, 20, 12), MaterialLibrary.chromeMat);
+  asabaTower.position.set(11, 10, 0);
+  asabaAirport.add(asabaTerminal, asabaTower);
+  exteriorGroup.add(asabaAirport);
+  addCollider(180, -90, 28, 22, 'AsabaAirportTerminal');
+
+  // --- 11. SAPELE DISTRICT ---
+  // Sapele Seaport & Timber Market Wharves
+  const sapelePort = new THREE.Group();
+  sapelePort.position.set(-180, 0, -70);
+  const wharf = new THREE.Mesh(new THREE.BoxGeometry(30, 7, 26), new THREE.MeshStandardMaterial({ color: 0x713f12, roughness: 0.8 }));
+  wharf.position.y = 3.5;
+  const portCrane = new THREE.Mesh(new THREE.BoxGeometry(2, 18, 2), new THREE.MeshStandardMaterial({ color: 0xeab308 }));
+  portCrane.position.set(-9, 9, 0);
+  sapelePort.add(wharf, portCrane);
+  exteriorGroup.add(sapelePort);
+  addCollider(-180, -70, 30, 26, 'SapelePort');
+
+  // Sapele Athletic Club (Est. 1880)
+  const sapeleClub = new THREE.Group();
+  sapeleClub.position.set(-160, 0, -30);
+  const clubPavilion = new THREE.Mesh(new THREE.BoxGeometry(24, 6, 20), new THREE.MeshStandardMaterial({ color: 0x14532d, roughness: 0.5 }));
+  clubPavilion.position.y = 3;
+  const tennisCourt = new THREE.Mesh(new THREE.PlaneGeometry(18, 12), new THREE.MeshStandardMaterial({ color: 0xb91c1c }));
+  tennisCourt.rotation.x = -Math.PI / 2;
+  tennisCourt.position.set(0, 0.05, 14);
+  sapeleClub.add(clubPavilion, tennisCourt);
+  exteriorGroup.add(sapeleClub);
+  addCollider(-160, -30, 24, 20, 'SapeleAthleticClub');
+
+  // --- 12. AGBOR DISTRICT ---
+  // Agbor Standard Gauge Train Station
+  const trainStation = new THREE.Group();
+  trainStation.position.set(40, 0, 140);
+  const stationBuilding = new THREE.Mesh(new THREE.BoxGeometry(28, 8, 20), new THREE.MeshStandardMaterial({ color: 0x0369a1, roughness: 0.4 }));
+  stationBuilding.position.y = 4;
+  const railTracks = new THREE.Mesh(new THREE.PlaneGeometry(60, 4), MaterialLibrary.roadMat);
+  railTracks.rotation.x = -Math.PI / 2;
+  railTracks.position.set(0, 0.04, 13);
+  trainStation.add(stationBuilding, railTracks);
+  exteriorGroup.add(trainStation);
+  addCollider(40, 140, 28, 20, 'AgborTrainStation');
+
+  // Dein of Agbor Royal Palace
+  const agborPalace = new THREE.Group();
+  agborPalace.position.set(-40, 0, 140);
+  const palaceBuilding = new THREE.Mesh(new THREE.BoxGeometry(26, 9, 22), new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.6 }));
+  palaceBuilding.position.y = 4.5;
+  const royalArch = new THREE.Mesh(new THREE.BoxGeometry(10, 4, 1), MaterialLibrary.goldMat);
+  royalArch.position.set(0, 10, 11);
+  agborPalace.add(palaceBuilding, royalArch);
+  exteriorGroup.add(agborPalace);
+  addCollider(-40, 140, 26, 22, 'DeinAgborPalace');
+
+  // University of Delta / College of Education Agbor
+  const agborCollege = new THREE.Mesh(new THREE.BoxGeometry(26, 8, 22), new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5 }));
+  agborCollege.position.set(90, 4, 140);
+  exteriorGroup.add(agborCollege);
+  addCollider(90, 140, 26, 22, 'DeltaCollegeAgbor');
+
+  // --- 13. ABRAKA DISTRICT ---
+  // Abraka River Resort Motel & Natural Spring Beach
+  const abrakaResort = new THREE.Group();
+  abrakaResort.position.set(-80, 0, 140);
+  const emeraldSpring = new THREE.Mesh(new THREE.PlaneGeometry(40, 26), new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.1, metalness: 0.4 }));
+  emeraldSpring.rotation.x = -Math.PI / 2;
+  emeraldSpring.position.set(0, 0.02, 12);
+  const whiteBeach = new THREE.Mesh(new THREE.PlaneGeometry(40, 12), new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.9 }));
+  whiteBeach.rotation.x = -Math.PI / 2;
+  whiteBeach.position.set(0, 0.03, 0);
+  const resortLodge = new THREE.Mesh(new THREE.BoxGeometry(24, 7, 18), new THREE.MeshStandardMaterial({ color: 0x854d0e, roughness: 0.8 }));
+  resortLodge.position.set(0, 3.5, -12);
+  abrakaResort.add(emeraldSpring, whiteBeach, resortLodge);
+  exteriorGroup.add(abrakaResort);
+  addCollider(-80, 128, 24, 18, 'AbrakaResortLodge');
+
+  // DELSU Main Campus (Abraka)
+  const delsuCampus = new THREE.Group();
+  delsuCampus.position.set(-130, 0, 140);
+  const delsuBlock = new THREE.Mesh(new THREE.BoxGeometry(30, 9, 22), new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.5 }));
+  delsuBlock.position.y = 4.5;
+  const delsuArch = new THREE.Mesh(new THREE.BoxGeometry(14, 3, 1), MaterialLibrary.chromeMat);
+  delsuArch.position.set(0, 6.5, 11);
+  delsuCampus.add(delsuBlock, delsuArch);
+  exteriorGroup.add(delsuCampus);
+  addCollider(-130, 140, 30, 22, 'DELSUCampusAbraka');
+
   return {
     scene,
     cashPickups,
@@ -741,6 +903,7 @@ export function buildOpenWorldScene(scene: THREE.Scene): WorldObjects {
     exteriorGroup,
     pedestrians,
     streetVehicles,
+    buildingColliders,
   };
 }
 
